@@ -1,1 +1,40 @@
+name: Run Cyber Aggregator
 
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - run: pip install -r requirements.txt
+
+    - run: python scripts/collect.py
+
+    - run: python scripts/ai_tag.py
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+    - run: python scripts/build_rss.py
+
+    - name: Push feeds to website repo
+      run: |
+        git clone https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/szizzo522/my-personal-website.git
+        mkdir -p my-personal-website/feeds
+        cp generated_feeds/*.xml my-personal-website/feeds/
+        cd my-personal-website
+        git config user.name "rss-bot"
+        git config user.email "rss@bot.com"
+        git add .
+        git commit -m "update feeds"
+        git push
