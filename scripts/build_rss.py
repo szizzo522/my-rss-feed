@@ -4,23 +4,18 @@ import os
 from xml.sax.saxutils import escape
 import re
 
-# Ensure the output folder exists
+# Make output folder
 os.makedirs("generated_feeds", exist_ok=True)
 
-# Load AI-tagged articles
+# Load articles
 with open("tagged_articles.json", "r", encoding="utf-8") as f:
     articles = json.load(f)
 
-# Dictionary to hold feeds by category
+# Dict to hold articles per category
 category_feeds = {}
 
-# Helper: convert category to a safe filename
+# Safe filename function
 def safe_filename(name):
-    """
-    Lowercase, replace spaces with underscores,
-    remove all non-alphanumeric/underscore characters.
-    Defaults to 'general' if empty.
-    """
     name = name.lower().replace(" ", "_")
     name = re.sub(r"[^a-z0-9_]", "", name)
     return name or "general"
@@ -30,17 +25,14 @@ for a in articles:
     title = escape(a.get("title", "No Title"))
     link = escape(a.get("link", ""))
     summary = escape(a.get("summary", ""))
-    
-    # Use AI-generated tag, default to General
     category = a.get("tag", "General")
     
-    # Add category to title
+    # Prepend category to title
     title_with_tag = f"[{category}] {title}"
     
     # Format pubDate in RFC 822
     pub_date = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
     
-    # Create RSS item XML
     item_xml = f"""
     <item>
         <title>{title_with_tag}</title>
@@ -50,13 +42,13 @@ for a in articles:
     </item>
     """
     
-    # Add to "all" feed
+    # Add to all feed
     category_feeds.setdefault("all", []).append(item_xml)
     
-    # Add to category-specific feed
+    # Add to category feed
     category_feeds.setdefault(category, []).append(item_xml)
 
-# Function to build full RSS XML
+# Function to generate full RSS XML
 def build_rss(feed_items, feed_title="Cyber Threat Intel Feed"):
     rss = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -69,7 +61,7 @@ def build_rss(feed_items, feed_title="Cyber Threat Intel Feed"):
     rss += "\n</channel></rss>"
     return rss
 
-# Write feeds to generated_feeds folder
+# Write one file per category
 for cat, items in category_feeds.items():
     filename = f"generated_feeds/{safe_filename(cat)}.xml"
     with open(filename, "w", encoding="utf-8") as f:
