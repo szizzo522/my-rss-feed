@@ -15,20 +15,30 @@ with open("tagged_articles.json", "r", encoding="utf-8") as f:
 feeds = {}
 
 # Safe filename helper
-def safe_filename(name):
-    name = name.lower().replace(" ", "_")
+def safe_filename(name, max_len=20):
+    """
+    Convert category/tag to a safe filename:
+    - Lowercase
+    - Spaces → underscores
+    - Remove non-alphanumeric/underscore chars
+    - Truncate to max_len chars
+    """
+    name = str(name).lower().replace(" ", "_")
     name = re.sub(r"[^a-z0-9_]", "", name)
-    return name or "general"
+    return name[:max_len] or "general"
 
 # Build RSS items
 for article in articles:
     title = escape(article.get("title", "No Title"))
     link = escape(article.get("link", ""))
     summary = escape(article.get("summary", ""))
-    category = article.get("tag", "General")
-
+    
+    # Use short category names to prevent filename errors
+    raw_category = article.get("tag", "General")
+    category = safe_filename(raw_category)
+    
     # Prepend category in title for clarity
-    title_with_tag = f"[{category}] {title}"
+    title_with_tag = f"[{raw_category}] {title}"
 
     # Format pubDate
     pub_date = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
@@ -61,7 +71,7 @@ def build_rss(items, feed_title="Cyber Threat Intel Feed"):
     rss += "\n</channel></rss>"
     return rss
 
-# Write one file per category only — filenames are safe
+# Write one file per category — safe filenames
 for category_name, items in feeds.items():
     filename = f"generated_feeds/{safe_filename(category_name)}.xml"
     with open(filename, "w", encoding="utf-8") as f:
